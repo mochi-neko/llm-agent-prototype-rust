@@ -7,6 +7,10 @@ pub(crate) enum Model {
     Gpt35Turbo0613,
     Gpt35Turbo16k,
     Gpt35Turbo16k0613,
+    Gpt4,
+    Gpt40613,
+    Gpt432k,
+    Gpt432k0613,
 }
 
 impl Model {
@@ -16,6 +20,10 @@ impl Model {
             Model::Gpt35Turbo0613 => Ok("gpt-3.5-turbo-0613".to_string()),
             Model::Gpt35Turbo16k => Ok("gpt-3.5-turbo-16k".to_string()),
             Model::Gpt35Turbo16k0613 => Ok("gpt-3.5-turbo-16k-0613".to_string()),
+            Model::Gpt4 => Ok("gpt-4".to_string()),
+            Model::Gpt40613 => Ok("gpt-4-0613".to_string()),
+            Model::Gpt432k => Ok("gpt-4-32k".to_string()),
+            Model::Gpt432k0613 => Ok("gpt-4-32k-0613".to_string()),
             _ => Err(anyhow!("Invalid model")),
         }
     }
@@ -26,6 +34,10 @@ impl Model {
             "gpt-3.5-turbo-0613" => Ok(Model::Gpt35Turbo0613),
             "gpt-3.5-turbo-16k" => Ok(Model::Gpt35Turbo16k),
             "gpt-3.5-turbo-16k-0613" => Ok(Model::Gpt35Turbo16k0613),
+            "gpt-4" => Ok(Model::Gpt4),
+            "gpt-4-0613" => Ok(Model::Gpt40613),
+            "gpt-4-32k" => Ok(Model::Gpt432k),
+            "gpt-4-32k-0613" => Ok(Model::Gpt432k0613),
             _ => Err(anyhow!("Invalid model")),
         }
     }
