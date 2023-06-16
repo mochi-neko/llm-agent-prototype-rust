@@ -10,7 +10,7 @@ pub(crate) enum Model {
 }
 
 impl Model {
-    pub(super) fn parse_to_string(&self) -> Result<String> {
+    pub(crate) fn parse_to_string(&self) -> Result<String> {
         match self {
             Model::Gpt35Turbo => Ok("gpt-3.5-turbo".to_string()),
             Model::Gpt35Turbo0613 => Ok("gpt-3.5-turbo-0613".to_string()),
@@ -20,7 +20,7 @@ impl Model {
         }
     }
 
-    pub(super) fn parse_to_model(input: &str) -> Result<Model> {
+    pub(crate) fn parse_to_model(input: &str) -> Result<Model> {
         match input {
             "gpt-3.5-turbo" => Ok(Model::Gpt35Turbo),
             "gpt-3.5-turbo-0613" => Ok(Model::Gpt35Turbo0613),
@@ -32,7 +32,7 @@ impl Model {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(super) enum Role {
+pub(crate) enum Role {
     System,
     Assistant,
     User,
@@ -40,7 +40,7 @@ pub(super) enum Role {
 }
 
 impl Role {
-    pub(super) fn parse_to_string(&self) -> Result<String> {
+    pub(crate) fn parse_to_string(&self) -> Result<String> {
         match self {
             Role::System => Ok("system".to_string()),
             Role::Assistant => Ok("assistant".to_string()),
@@ -49,7 +49,7 @@ impl Role {
         }
     }
 
-    pub(super) fn parse_to_role(input: &str) -> Result<Role> {
+    pub(crate) fn parse_to_role(input: &str) -> Result<Role> {
         match input {
             "system" => Ok(Role::System),
             "assistant" => Ok(Role::Assistant),
@@ -61,49 +61,49 @@ impl Role {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(super) struct RequestBody {
-    pub(super) model: String,
-    pub(super) messages: Vec<Message>,
+pub(crate) struct RequestBody {
+    pub(crate) model: String,
+    pub(crate) messages: Vec<Message>,
     // TODO: Add optional parameters
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(super) struct ResponseBody {
-    pub(super) id: String,
-    pub(super) object: String,
-    pub(super) created: u64,
-    pub(super) model: String,
-    pub(super) choices: Vec<Choice>,
-    pub(super) usage: Usage,
+pub(crate) struct ResponseBody {
+    pub(crate) id: String,
+    pub(crate) object: String,
+    pub(crate) created: u64,
+    pub(crate) model: String,
+    pub(crate) choices: Vec<Choice>,
+    pub(crate) usage: Usage,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(super) struct Message {
-    pub(super) role: String,
+pub(crate) struct Message {
+    pub(crate) role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) content: Option<String>,
+    pub(crate) content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) name: Option<String>,
+    pub(crate) name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) function_call: Option<FunctionCall>,
+    pub(crate) function_call: Option<FunctionCall>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(super) struct Choice {
-    pub index: u64,
-    pub message: Message,
-    pub finish_reason: String,
+pub(crate) struct Choice {
+    pub(crate) index: u64,
+    pub(crate) message: Message,
+    pub(crate) finish_reason: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(super) struct FunctionCall {
-    name: String,
-    arguments: String,
+pub(crate) struct FunctionCall {
+    pub(crate) name: String,
+    pub(crate) arguments: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(super) struct Usage {
-    prompt_tokens: u64,
-    completion_tokens: u64,
-    total_tokens: u64,
+pub(crate) struct Usage {
+    pub(crate) prompt_tokens: u64,
+    pub(crate) completion_tokens: u64,
+    pub(crate) total_tokens: u64,
 }

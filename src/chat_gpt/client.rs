@@ -1,4 +1,4 @@
-use crate::chat_gpt::specification::{Message, Model, RequestBody, Role};
+use crate::chat_gpt::specification::{Message, Model, RequestBody, ResponseBody, Role};
 use anyhow::Result;
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
@@ -9,7 +9,7 @@ pub(crate) async fn complete_chat(
     prompt: String,
     message: String,
     verbose: bool,
-) -> Result<String> {
+) -> Result<ResponseBody> {
     let api_key = env::var("OPENAI_API_KEY")?;
 
     // HTTPS connector
@@ -37,7 +37,7 @@ pub(crate) async fn complete_chat(
         ],
     };
 
-    // Convert the payload to a string
+    // Serialize the payload to a string
     let json_str = serde_json::to_string(&reqest_body)?;
 
     if verbose {
@@ -64,11 +64,14 @@ pub(crate) async fn complete_chat(
         // Convert bytes to string
         let body_string = String::from_utf8(body_bytes.to_vec())?;
 
-        println!("Response JSON:\n{}", body_string);
+        if verbose {
+            println!("Response JSON:\n{}", body_string);
+        }
 
-        // let body_object = serde_json::from_str::<ResponseBody>(&body_string)?;
+        // Deserialize the string to a struct
+        let body_object = serde_json::from_str::<ResponseBody>(&body_string)?;
 
-        Ok(body_string)
+        Ok(body_object)
     } else {
         eprintln!("HTTP request failed: {}", response.status());
 
