@@ -1,5 +1,6 @@
 mod chat_gpt;
 use crate::chat_gpt::client::complete_chat;
+use crate::chat_gpt::specification::Model;
 use anyhow::{Ok, Result};
 use axum::{routing::get, Router};
 
@@ -23,5 +24,12 @@ async fn root() -> &'static str {
 }
 
 async fn chat() -> String {
-    complete_chat().await.unwrap()
+    complete_chat(
+        Model::Gpt35Turbo,
+        "あなたは世界的に有名な小説家です。".to_string(),
+        "「吾輩は猫である」から始まる小説の続きを書いてください。".to_string(),
+        true,
+    )
+    .await
+    .unwrap()
 }

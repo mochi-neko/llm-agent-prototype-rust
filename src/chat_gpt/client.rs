@@ -1,10 +1,15 @@
+use crate::chat_gpt::specification::{Message, Model, RequestBody, Role};
 use anyhow::Result;
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
-use serde_json::json;
 use std::env;
 
-pub async fn complete_chat() -> Result<String> {
+pub(crate) async fn complete_chat(
+    model: Model,
+    prompt: String,
+    message: String,
+    verbose: bool,
+) -> Result<String> {
     let api_key = env::var("OPENAI_API_KEY")?;
 
     // HTTPS connector
@@ -14,24 +19,32 @@ pub async fn complete_chat() -> Result<String> {
     let client = Client::builder().build::<_, Body>(https);
 
     // Create JSON payload
-    let json = json!({
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant."
+    let reqest_body = RequestBody {
+        model: model.parse_to_string()?,
+        messages: vec![
+            Message {
+                role: Role::System.parse_to_string()?,
+                content: Some(prompt),
+                name: None,
+                function_call: None,
             },
-            {
-                "role": "user",
-                "content": "Who won the world series in 2020?"
-            }
-        ]
-    });
+            Message {
+                role: Role::User.parse_to_string()?,
+                content: Some(message),
+                name: None,
+                function_call: None,
+            },
+        ],
+    };
 
     // Convert the payload to a string
-    let json_str = json.to_string();
+    let json_str = serde_json::to_string(&reqest_body)?;
 
-    // WebAPI URL
+    if verbose {
+        println!("Request JSON\n{}", json_str);
+    }
+
+    // WebAPI URI
     let url = "https://api.openai.com/v1/chat/completions".parse::<hyper::Uri>()?;
 
     // Create HTTP POST request
@@ -51,7 +64,7 @@ pub async fn complete_chat() -> Result<String> {
         // Convert bytes to string
         let body_string = String::from_utf8(body_bytes.to_vec())?;
 
-        println!("Response JSON: {}", body_string);
+        println!("Response JSON:\n{}", body_string);
 
         // let body_object = serde_json::from_str::<ResponseBody>(&body_string)?;
 

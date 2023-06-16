@@ -1,2 +1,3 @@
-pub mod client;
-pub mod specification;
+pub(super) mod client;
+pub(super) mod specification;
+
