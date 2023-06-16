@@ -115,10 +115,34 @@ pub(crate) struct ResponseBody {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ResponseChunk {
+    pub(crate) id: String,
+    pub(crate) object: String,
+    pub(crate) created: u64,
+    pub(crate) model: String,
+    pub(crate) choices: Vec<ChoiceChunk>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ChoiceChunk {
+    pub(crate) index: u64,
+    pub(crate) delta: Message,
+    pub(crate) finish_reason: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Function {
     pub(crate) name: String,
     pub(crate) description: String,
     pub(crate) parameters: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct Delta {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) content: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
