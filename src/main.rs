@@ -3,6 +3,7 @@ use crate::chat_gpt::client::complete_chat;
 use crate::chat_gpt::specification::Model;
 use anyhow::Result;
 use axum::{response, routing::get, Router};
+use chat_gpt::specification::{Message, RequestBody, Role};
 use serde::{Deserialize, Serialize};
 
 #[tokio::main]
@@ -30,13 +31,39 @@ struct ChatResponse {
 }
 
 async fn chat() -> response::Json<ChatResponse> {
-    let response = complete_chat(
-        Model::Gpt35Turbo,
-        "あなたは世界的に有名な小説家です。".to_string(),
-        "「吾輩は猫である」から始まる小説の続きを書いてください。".to_string(),
-        true,
-    )
-    .await;
+    let parameters = RequestBody {
+        model: Model::Gpt35Turbo.parse_to_string().unwrap(),
+        messages: vec![
+            Message {
+                role: Role::System.parse_to_string().unwrap(),
+                content: Some("あなたは世界的に有名な小説家です。".to_string()),
+                name: None,
+                function_call: None,
+            },
+            Message {
+                role: Role::User.parse_to_string().unwrap(),
+                content: Some(
+                    "「吾輩は猫である」から始まる小説の続きを書いてください。".to_string(),
+                ),
+                name: None,
+                function_call: None,
+            },
+        ],
+        functions: None,
+        function_call: None,
+        temperature: None,
+        top_p: None,
+        n: None,
+        stream: None,
+        stop: None,
+        max_tokens: None,
+        presence_penalty: None,
+        frequency_penalty: None,
+        logit_bias: None,
+        user: None,
+    };
+
+    let response = complete_chat(parameters, true).await;
     match response {
         Err(e) => response::Json(ChatResponse {
             message: format!("Error: {:?}", e),

@@ -1,15 +1,10 @@
-use crate::chat_gpt::specification::{Message, Model, RequestBody, ResponseBody, Role};
+use crate::chat_gpt::specification::{RequestBody, ResponseBody};
 use anyhow::Result;
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
 use std::env;
 
-pub(crate) async fn complete_chat(
-    model: Model,
-    prompt: String,
-    message: String,
-    verbose: bool,
-) -> Result<ResponseBody> {
+pub(crate) async fn complete_chat(parameters: RequestBody, verbose: bool) -> Result<ResponseBody> {
     let api_key = env::var("OPENAI_API_KEY")?;
 
     // HTTPS connector
@@ -18,39 +13,8 @@ pub(crate) async fn complete_chat(
     // Hyper HTTP client with HTTPS support
     let client = Client::builder().build::<_, Body>(https);
 
-    // Create JSON payload
-    let reqest_body = RequestBody {
-        model: model.parse_to_string()?,
-        messages: vec![
-            Message {
-                role: Role::System.parse_to_string()?,
-                content: Some(prompt),
-                name: None,
-                function_call: None,
-            },
-            Message {
-                role: Role::User.parse_to_string()?,
-                content: Some(message),
-                name: None,
-                function_call: None,
-            },
-        ],
-        functions: None,
-        function_call: None,
-        temperature: None,
-        top_p: None,
-        n: None,
-        stream: None,
-        stop: None,
-        max_tokens: None,
-        presence_penalty: None,
-        frequency_penalty: None,
-        logit_bias: None,
-        user: None,
-    };
-
     // Serialize the payload to a string
-    let json_str = serde_json::to_string(&reqest_body)?;
+    let json_str = serde_json::to_string(&parameters)?;
 
     if verbose {
         println!("Request JSON\n{}", json_str);
@@ -60,13 +24,13 @@ pub(crate) async fn complete_chat(
     let url = "https://api.openai.com/v1/chat/completions".parse::<hyper::Uri>()?;
 
     // Create HTTP POST request
-    let req = Request::post(url)
+    let request = Request::post(url)
         .header("Authorization", "Bearer ".to_owned() + &api_key)
         .header("Content-Type", "application/json")
         .body(Body::from(json_str))?;
 
     // Make the request
-    let response = client.request(req).await?;
+    let response = client.request(request).await?;
 
     // If the request is successful
     if response.status().is_success() {
