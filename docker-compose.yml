@@ -10,6 +10,8 @@ services:
       - rust-target:/workspace/target
     env_file:
       - .env
+    ports:
+      - 8000:8000
 
 volumes:
   rust-target:

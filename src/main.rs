@@ -13,8 +13,8 @@ async fn main() -> Result<()> {
         .route("/", get(root))
         .route("/chat", get(chat));
 
-    // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3000".parse()?)
+    // run it with hyper on localhost:8000
+    axum::Server::bind(&"0.0.0.0:8000".parse()?)
         .serve(app.into_make_service())
         .await?;
 
