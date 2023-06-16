@@ -35,6 +35,18 @@ pub(crate) async fn complete_chat(
                 function_call: None,
             },
         ],
+        functions: None,
+        function_call: None,
+        temperature: None,
+        top_p: None,
+        n: None,
+        stream: None,
+        stop: None,
+        max_tokens: None,
+        presence_penalty: None,
+        frequency_penalty: None,
+        logit_bias: None,
+        user: None,
     };
 
     // Serialize the payload to a string

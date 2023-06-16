@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
@@ -76,7 +78,30 @@ impl Role {
 pub(crate) struct RequestBody {
     pub(crate) model: String,
     pub(crate) messages: Vec<Message>,
-    // TODO: Add optional parameters
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) functions: Option<Vec<Function>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) function_call: Option<FunctionCallSpecifying>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) temperature: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) top_p: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) n: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) stream: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) stop: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) max_tokens: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) presence_penalty: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) frequency_penalty: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) logit_bias: Option<HashMap<String, f64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) user: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -87,6 +112,24 @@ pub(crate) struct ResponseBody {
     pub(crate) model: String,
     pub(crate) choices: Vec<Choice>,
     pub(crate) usage: Usage,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct Function {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) parameters: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) enum FunctionCallSpecifying {
+    Mode(String),
+    Specify(ParticularFunction),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ParticularFunction {
+    pub(crate) name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
