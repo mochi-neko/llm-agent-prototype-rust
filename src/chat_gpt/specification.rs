@@ -26,7 +26,6 @@ impl Model {
             Model::Gpt40613 => Ok("gpt-4-0613".to_string()),
             Model::Gpt432k => Ok("gpt-4-32k".to_string()),
             Model::Gpt432k0613 => Ok("gpt-4-32k-0613".to_string()),
-            _ => Err(anyhow!("Invalid model")),
         }
     }
 
@@ -125,9 +124,9 @@ pub(crate) struct ResponseChunk {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct ChoiceChunk {
+    pub(crate) delta: Delta,
     pub(crate) index: u64,
-    pub(crate) delta: Message,
-    pub(crate) finish_reason: String,
+    pub(crate) finish_reason: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
