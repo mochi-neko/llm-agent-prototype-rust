@@ -104,46 +104,12 @@ pub(crate) struct RequestBody {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ResponseBody {
-    pub(crate) id: String,
-    pub(crate) object: String,
-    pub(crate) created: u64,
-    pub(crate) model: String,
-    pub(crate) choices: Vec<Choice>,
-    pub(crate) usage: Usage,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ResponseChunk {
-    pub(crate) id: String,
-    pub(crate) object: String,
-    pub(crate) created: u64,
-    pub(crate) model: String,
-    pub(crate) choices: Vec<ChoiceChunk>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ChoiceChunk {
-    pub(crate) delta: Delta,
-    pub(crate) index: u64,
-    pub(crate) finish_reason: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Function {
     pub(crate) name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parameters: Option<serde_json::Map<String, serde_json::Value>>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct Delta {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) role: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) content: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -169,6 +135,16 @@ pub(crate) struct Message {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ResponseBody {
+    pub(crate) id: String,
+    pub(crate) object: String,
+    pub(crate) created: u64,
+    pub(crate) model: String,
+    pub(crate) choices: Vec<Choice>,
+    pub(crate) usage: Usage,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Choice {
     pub(crate) index: u64,
     pub(crate) message: Message,
@@ -186,4 +162,28 @@ pub(crate) struct Usage {
     pub(crate) prompt_tokens: u64,
     pub(crate) completion_tokens: u64,
     pub(crate) total_tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ResponseChunk {
+    pub(crate) id: String,
+    pub(crate) object: String,
+    pub(crate) created: u64,
+    pub(crate) model: String,
+    pub(crate) choices: Vec<ChoiceChunk>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct ChoiceChunk {
+    pub(crate) delta: Delta,
+    pub(crate) index: u64,
+    pub(crate) finish_reason: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct Delta {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) content: Option<String>,
 }
