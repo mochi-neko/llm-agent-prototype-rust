@@ -134,6 +134,17 @@ pub(crate) struct Message {
     pub(crate) function_call: Option<FunctionCall>,
 }
 
+impl Clone for Message {
+    fn clone(&self) -> Self {
+        Self {
+            role: self.role.clone(),
+            content: self.content.clone(),
+            name: self.name.clone(),
+            function_call: self.function_call.clone(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct ResponseBody {
     pub(crate) id: String,
@@ -155,6 +166,15 @@ pub(crate) struct Choice {
 pub(crate) struct FunctionCall {
     pub(crate) name: String,
     pub(crate) arguments: String,
+}
+
+impl Clone for FunctionCall {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            arguments: self.arguments.clone(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
