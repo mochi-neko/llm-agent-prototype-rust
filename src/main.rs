@@ -10,7 +10,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use chat_gpt::specification::Model;
+use chat_gpt::specification::{Function, Model};
 use tokio::sync::Mutex;
 use tower_http::add_extension::AddExtensionLayer;
 
@@ -22,6 +22,35 @@ async fn main() -> Result<()> {
         memories: VecDeque::new(),
         max_size: 10,
     }));
+    let functions = Arc::new(vec![Function {
+        name: "emotion_simulator".to_string(),
+        description: Some("Simulate emotion of AI like human.".to_string()),
+        parameters: Some(
+            serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(
+                r#"{
+                    "type": "object",
+                    "properties": {
+                        "emotion": {
+                            "type": "string",
+                            "enum": [
+                                "neutral",
+                                "happy",
+                                "sad",
+                                "angry",
+                                "surprised",
+                                "disgusted",
+                                "fearful"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "emotion"
+                    ]
+                }"#,
+            )
+            .unwrap(),
+        ),
+    }]);
 
     // build our application
     let app = Router::new()
@@ -30,7 +59,8 @@ async fn main() -> Result<()> {
         .route("/chat_stream", post(chat_stream_handler))
         .route("/function", post(function_handler))
         .layer(AddExtensionLayer::new(model))
-        .layer(AddExtensionLayer::new(memory_state));
+        .layer(AddExtensionLayer::new(memory_state))
+        .layer(AddExtensionLayer::new(functions));
 
     // run it with hyper on localhost:8000
     axum::Server::bind(&"0.0.0.0:8000".parse()?)

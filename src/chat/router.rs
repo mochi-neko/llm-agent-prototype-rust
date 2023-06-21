@@ -151,6 +151,7 @@ pub(crate) async fn chat_stream_handler(
 pub(crate) async fn function_handler(
     model: extract::Extension<Arc<Model>>,
     memory_state: extract::Extension<Arc<Mutex<FiniteQueueMemory>>>,
+    functions: extract::Extension<Arc<Vec<Function>>>,
     request: extract::Json<ChatRequest>,
 ) -> response::Json<FunctionResponse> {
     let mut memory = memory_state.lock().await;
@@ -165,35 +166,7 @@ pub(crate) async fn function_handler(
     let parameters: RequestBody = RequestBody {
         model: model.parse_to_string().unwrap(),
         messages: memory.get(),
-        functions: Some(vec![Function {
-            name: "emotion_simulator".to_string(),
-            description: Some("Simulate emotion of AI like human.".to_string()),
-            parameters: Some(
-                serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(
-                    r#"{
-                        "type": "object",
-                        "properties": {
-                            "emotion": {
-                                "type": "string",
-                                "enum": [
-                                    "neutral",
-                                    "happy",
-                                    "sad",
-                                    "angry",
-                                    "surprised",
-                                    "disgusted",
-                                    "fearful"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "emotion"
-                        ]
-                    }"#,
-                )
-                .unwrap(),
-            ),
-        }]),
+        functions: Some(functions.to_vec()),
         function_call: Some("auto".to_string()),
         temperature: None,
         top_p: None,

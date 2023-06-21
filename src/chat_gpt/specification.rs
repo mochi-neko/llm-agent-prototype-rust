@@ -112,6 +112,16 @@ pub(crate) struct Function {
     pub(crate) parameters: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
+impl Clone for Function {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            description: self.description.clone(),
+            parameters: self.parameters.clone(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct ParticularFunction {
     pub(crate) name: String,
