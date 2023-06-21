@@ -6,10 +6,7 @@ use std::sync::Arc;
 use crate::chat::memory::FiniteQueueMemory;
 use crate::chat::router::{chat_handler, chat_stream_handler, function_handler};
 use anyhow::Result;
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::{routing::post, Router};
 use chat_gpt::specification::{Function, Model};
 use tokio::sync::Mutex;
 use tower_http::add_extension::AddExtensionLayer;
@@ -54,7 +51,6 @@ async fn main() -> Result<()> {
 
     // build our application
     let app = Router::new()
-        .route("/", get(root_handler))
         .route("/chat", post(chat_handler))
         .route("/chat_stream", post(chat_stream_handler))
         .route("/function", post(function_handler))
@@ -68,9 +64,4 @@ async fn main() -> Result<()> {
         .await?;
 
     Ok(())
-}
-
-/// curl http://localhost:8000/
-async fn root_handler() -> &'static str {
-    "Hello, World!"
 }
