@@ -154,7 +154,8 @@ pub(crate) async fn function_handler(
     functions: extract::Extension<Arc<Vec<Function>>>,
     request: extract::Json<ChatRequest>,
 ) -> response::Json<FunctionResponse> {
-    let mut memory = memory_state.lock().await;
+    // Clone not to change original memory
+    let mut memory = memory_state.lock().await.clone();
 
     memory.add(Message {
         role: Role::User.parse_to_string().unwrap(),
@@ -202,12 +203,7 @@ pub(crate) async fn function_handler(
                     arguments: None,
                 }),
                 Some(function_calling) => {
-                    memory.add(Message {
-                        role: Role::Assistant.parse_to_string().unwrap(),
-                        content: None,
-                        name: None,
-                        function_call: Some(function_calling.clone()),
-                    });
+                    // Does not record function calling in memory
                     response::Json(FunctionResponse {
                         success: true,
                         info: None,

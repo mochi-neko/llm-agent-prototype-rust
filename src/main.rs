@@ -1,10 +1,12 @@
 mod chat;
 mod chat_gpt;
+
 use std::collections::VecDeque;
 use std::sync::Arc;
 
 use crate::chat::memory::FiniteQueueMemory;
 use crate::chat::router::{chat_handler, chat_stream_handler, function_handler};
+
 use anyhow::Result;
 use axum::{routing::post, Router};
 use chat_gpt::specification::{Function, Model};
