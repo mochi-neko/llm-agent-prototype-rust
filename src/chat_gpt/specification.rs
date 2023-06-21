@@ -80,7 +80,7 @@ pub(crate) struct RequestBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) functions: Option<Vec<Function>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) function_call: Option<FunctionCallSpecifying>,
+    pub(crate) function_call: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) temperature: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -110,12 +110,6 @@ pub(crate) struct Function {
     pub(crate) description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parameters: Option<serde_json::Map<String, serde_json::Value>>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) enum FunctionCallSpecifying {
-    Mode(String),
-    Specify(ParticularFunction),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
