@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -29,19 +29,19 @@ impl Model {
         }
     }
 
-    pub(crate) fn parse_to_model(input: &str) -> Result<Model> {
-        match input {
-            "gpt-3.5-turbo" => Ok(Model::Gpt35Turbo),
-            "gpt-3.5-turbo-0613" => Ok(Model::Gpt35Turbo0613),
-            "gpt-3.5-turbo-16k" => Ok(Model::Gpt35Turbo16k),
-            "gpt-3.5-turbo-16k-0613" => Ok(Model::Gpt35Turbo16k0613),
-            "gpt-4" => Ok(Model::Gpt4),
-            "gpt-4-0613" => Ok(Model::Gpt40613),
-            "gpt-4-32k" => Ok(Model::Gpt432k),
-            "gpt-4-32k-0613" => Ok(Model::Gpt432k0613),
-            _ => Err(anyhow!("Invalid model")),
-        }
-    }
+    // pub(crate) fn parse_to_model(input: &str) -> Result<Model> {
+    //     match input {
+    //         "gpt-3.5-turbo" => Ok(Model::Gpt35Turbo),
+    //         "gpt-3.5-turbo-0613" => Ok(Model::Gpt35Turbo0613),
+    //         "gpt-3.5-turbo-16k" => Ok(Model::Gpt35Turbo16k),
+    //         "gpt-3.5-turbo-16k-0613" => Ok(Model::Gpt35Turbo16k0613),
+    //         "gpt-4" => Ok(Model::Gpt4),
+    //         "gpt-4-0613" => Ok(Model::Gpt40613),
+    //         "gpt-4-32k" => Ok(Model::Gpt432k),
+    //         "gpt-4-32k-0613" => Ok(Model::Gpt432k0613),
+    //         _ => Err(anyhow!("Invalid model")),
+    //     }
+    // }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -62,15 +62,15 @@ impl Role {
         }
     }
 
-    pub(crate) fn parse_to_role(input: &str) -> Result<Role> {
-        match input {
-            "system" => Ok(Role::System),
-            "assistant" => Ok(Role::Assistant),
-            "user" => Ok(Role::User),
-            "function" => Ok(Role::Function),
-            _ => Err(anyhow!("Invalid role")),
-        }
-    }
+    // pub(crate) fn parse_to_role(input: &str) -> Result<Role> {
+    //     match input {
+    //         "system" => Ok(Role::System),
+    //         "assistant" => Ok(Role::Assistant),
+    //         "user" => Ok(Role::User),
+    //         "function" => Ok(Role::Function),
+    //         _ => Err(anyhow!("Invalid role")),
+    //     }
+    // }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

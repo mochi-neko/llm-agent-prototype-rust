@@ -1,16 +1,31 @@
 mod chat;
 mod chat_gpt;
-use crate::chat::router::{chat, chat_stream};
+use std::collections::VecDeque;
+use std::sync::Arc;
+
+use crate::chat::memory::FiniteQueueMemory;
+use crate::chat::router::{chat_handler, chat_stream_handler};
 use anyhow::Result;
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use tokio::sync::Mutex;
+use tower_http::add_extension::AddExtensionLayer;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let memory_state = Arc::new(Mutex::new(FiniteQueueMemory {
+        memories: VecDeque::new(),
+        max_size: 10,
+    }));
+
     // build our application
     let app = Router::new()
         .route("/", get(root))
-        .route("/chat", get(chat))
-        .route("/chat_stream", get(chat_stream));
+        .route("/chat", get(chat_handler))
+        .route("/chat_stream", post(chat_stream_handler))
+        .layer(AddExtensionLayer::new(memory_state));
 
     // run it with hyper on localhost:8000
     axum::Server::bind(&"0.0.0.0:8000".parse()?)
@@ -20,6 +35,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/// curl http://localhost:8000/
 async fn root() -> &'static str {
     "Hello, World!"
 }

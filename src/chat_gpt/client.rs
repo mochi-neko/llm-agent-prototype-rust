@@ -71,7 +71,7 @@ pub(crate) async fn complete_chat_stream(
     tx: mpsc::UnboundedSender<Result<String>>,
     parameters: RequestBody,
     verbose: bool,
-) -> Result<()> {
+) -> Result<String> {
     if parameters.stream.is_none() || !parameters.stream.unwrap() {
         eprintln!("This function is only available for stream mode");
 
@@ -130,7 +130,7 @@ pub(crate) async fn complete_chat_stream(
                     Ok(result) => {
                         total_message.push_str(&result);
                         if verbose {
-                            println!("Total message:\n{}", total_message);
+                            println!("Current total message:\n{}", total_message);
                         }
                     }
                     Err(e) => {
@@ -141,7 +141,11 @@ pub(crate) async fn complete_chat_stream(
             }
         }
 
-        Ok(())
+        if verbose {
+            println!("Result total message:\n{}", total_message);
+        }
+
+        Ok(total_message)
     } else {
         eprintln!("HTTP request failed: {}", response.status());
 
