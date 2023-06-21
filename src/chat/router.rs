@@ -26,8 +26,9 @@ pub(crate) struct ChatResponse {
     pub(crate) message: String,
 }
 
-/// curl http://localhost:8000/chat -X GET -H "Content-Type: application/json" -d '{"message":"Hello!"}'
+/// curl http://localhost:8000/chat -X POST -H "Content-Type: application/json" -d '{"message":"Hello!"}'
 pub(crate) async fn chat_handler(
+    model: extract::Extension<Arc<Model>>,
     memory_state: extract::Extension<Arc<Mutex<FiniteQueueMemory>>>,
     request: extract::Json<ChatRequest>,
 ) -> response::Json<ChatResponse> {
@@ -41,7 +42,7 @@ pub(crate) async fn chat_handler(
     });
 
     let parameters: RequestBody = RequestBody {
-        model: Model::Gpt35Turbo.parse_to_string().unwrap(),
+        model: model.parse_to_string().unwrap(),
         messages: memory.get(),
         functions: None,
         function_call: None,
@@ -91,6 +92,7 @@ pub(crate) async fn chat_handler(
 
 /// curl http://localhost:8000/chat_stream -X POST -H "Content-Type: application/json" -d '{"message":"Hello!"}'
 pub(crate) async fn chat_stream_handler(
+    model: extract::Extension<Arc<Model>>,
     memory_state: extract::Extension<Arc<Mutex<FiniteQueueMemory>>>,
     request: extract::Json<ChatRequest>,
 ) -> Response<Body> {
@@ -107,7 +109,7 @@ pub(crate) async fn chat_stream_handler(
         });
 
         let parameters = RequestBody {
-            model: Model::Gpt35Turbo.parse_to_string().unwrap(),
+            model: model.parse_to_string().unwrap(),
             messages: memory.get(),
             functions: None,
             function_call: None,
