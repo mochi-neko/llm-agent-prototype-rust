@@ -7,11 +7,19 @@ services:
     working_dir: /workspace
     volumes:
       - .:/workspace
-      - rust-target:/workspace/target
     env_file:
       - .env
     ports:
       - 8000:8000
-
+  qdrant:
+    build:
+      context: .
+      dockerfile: docker/qdrant/Dockerfile
+    volumes:
+      - .db:/qdrant/storage
+    env_file:
+      - .env
+    ports:
+      - 6333:6333
 volumes:
   rust-target:

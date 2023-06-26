@@ -1,24 +1,30 @@
 use std::sync::Arc;
 
 use axum::{
-    extract,
+    extract::{self, State},
     response::{self, Response},
 };
+use chrono::Utc;
 use hyper::Body;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::chat_gpt::{
-    client::{complete_chat, complete_chat_stream},
-    specification::{Function, Message, Model, RequestBody, Role},
+use crate::{
+    api_state::ApiState,
+    chat_gpt_api::{
+        client::{complete_chat, complete_chat_stream},
+        specification::{Message, RequestBody, Role},
+    },
+    vector_db::database::MetaData,
 };
 
-use super::memory::{FiniteQueueMemory, Memory};
+use super::memory::Memory;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct ChatRequest {
     pub(crate) message: String,
+    pub(crate) author: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -36,22 +42,34 @@ pub(crate) struct FunctionResponse {
 
 /// curl http://localhost:8000/chat -X POST -H "Content-Type: application/json" -d '{"message":"Hello!"}'
 pub(crate) async fn chat_handler(
-    model: extract::Extension<Arc<Model>>,
-    memory_state: extract::Extension<Arc<Mutex<FiniteQueueMemory>>>,
+    api_state: State<Arc<Mutex<ApiState<'_>>>>,
     request: extract::Json<ChatRequest>,
 ) -> response::Json<ChatResponse> {
-    let mut memory = memory_state.lock().await;
+    let mut api_state = api_state.lock().await;
 
-    memory.add(Message {
+    api_state.context_memory.add(Message {
         role: Role::User.parse_to_string().unwrap(),
         content: Some(request.message.to_string()),
         name: None,
         function_call: None,
     });
+    api_state
+        .vector_memories
+        .session
+        .upsert(
+            &request.message.to_string(),
+            MetaData {
+                datetime: Utc::now(),
+                author: request.author.clone(),
+                addressee: "AI".to_string(), // TODO:
+            },
+        )
+        .await
+        .unwrap();
 
     let parameters: RequestBody = RequestBody {
-        model: model.parse_to_string().unwrap(),
-        messages: memory.get(),
+        model: api_state.model.parse_to_string().unwrap(),
+        messages: api_state.context_memory.get(),
         functions: None,
         function_call: None,
         temperature: None,
@@ -79,12 +97,26 @@ pub(crate) async fn chat_handler(
                     message: "No content in response".to_string(),
                 }),
                 Some(content) => {
-                    memory.add(Message {
+                    api_state.context_memory.add(Message {
                         role: Role::Assistant.parse_to_string().unwrap(),
                         content: Some(content.to_string()),
                         name: None,
                         function_call: None,
                     });
+                    api_state
+                        .vector_memories
+                        .session
+                        .upsert(
+                            content,
+                            MetaData {
+                                datetime: Utc::now(),
+                                author: "AI".to_string(), // TODO:
+                                addressee: request.author.clone(),
+                            },
+                        )
+                        .await
+                        .unwrap();
+
                     response::Json(ChatResponse {
                         message: content.to_string(),
                     })
@@ -96,25 +128,38 @@ pub(crate) async fn chat_handler(
 
 /// curl http://localhost:8000/chat_stream -X POST -H "Content-Type: application/json" -d '{"message":"Hello!"}'
 pub(crate) async fn chat_stream_handler(
-    model: extract::Extension<Arc<Model>>,
-    memory_state: extract::Extension<Arc<Mutex<FiniteQueueMemory>>>,
+    api_state: State<Arc<Mutex<ApiState<'static>>>>,
     request: extract::Json<ChatRequest>,
 ) -> Response<Body> {
     let (tx, rx) = mpsc::unbounded_channel();
 
     tokio::spawn(async move {
-        let mut memory = memory_state.lock().await;
+        let mut api_state = api_state.lock().await;
 
-        memory.add(Message {
+        api_state.context_memory.add(Message {
             role: Role::User.parse_to_string().unwrap(),
             content: Some(request.message.to_string()),
             name: None,
             function_call: None,
         });
 
+        api_state
+            .vector_memories
+            .session
+            .upsert(
+                &request.message.to_string(),
+                MetaData {
+                    datetime: Utc::now(),
+                    author: request.author.clone(),
+                    addressee: "AI".to_string(), // TODO:
+                },
+            )
+            .await
+            .unwrap();
+
         let parameters = RequestBody {
-            model: model.parse_to_string().unwrap(),
-            messages: memory.get(),
+            model: api_state.model.parse_to_string().unwrap(),
+            messages: api_state.context_memory.get(),
             functions: None,
             function_call: None,
             temperature: None,
@@ -130,12 +175,26 @@ pub(crate) async fn chat_stream_handler(
         };
 
         if let Ok(total_message) = complete_chat_stream(tx, parameters, true).await {
-            memory.add(Message {
+            api_state.context_memory.add(Message {
                 role: Role::Assistant.parse_to_string().unwrap(),
-                content: Some(total_message),
+                content: Some(total_message.clone()),
                 name: None,
                 function_call: None,
             });
+
+            api_state
+                .vector_memories
+                .session
+                .upsert(
+                    total_message.clone().as_str(),
+                    MetaData {
+                        datetime: Utc::now(),
+                        author: "AI".to_string(), // TODO:
+                        addressee: request.author.clone(),
+                    },
+                )
+                .await
+                .unwrap();
         }
     });
 
@@ -149,15 +208,14 @@ pub(crate) async fn chat_stream_handler(
 
 /// curl http://localhost:8000/function -X POST -H "Content-Type: application/json" -d '{"message":"How are you felling now?"}'
 pub(crate) async fn function_handler(
-    model: extract::Extension<Arc<Model>>,
-    memory_state: extract::Extension<Arc<Mutex<FiniteQueueMemory>>>,
-    functions: extract::Extension<Arc<Vec<Function>>>,
+    api_state: State<Arc<Mutex<ApiState<'_>>>>,
     request: extract::Json<ChatRequest>,
 ) -> response::Json<FunctionResponse> {
+    let api_state = api_state.lock().await;
     // Clone not to change original memory
-    let mut memory = memory_state.lock().await.clone();
+    let mut context_memory = api_state.context_memory.clone();
 
-    memory.add(Message {
+    context_memory.add(Message {
         role: Role::User.parse_to_string().unwrap(),
         content: Some(request.message.to_string()),
         name: None,
@@ -165,9 +223,9 @@ pub(crate) async fn function_handler(
     });
 
     let parameters: RequestBody = RequestBody {
-        model: model.parse_to_string().unwrap(),
-        messages: memory.get(),
-        functions: Some(functions.to_vec()),
+        model: api_state.model.parse_to_string().unwrap(),
+        messages: context_memory.get(),
+        functions: Some(api_state.functions.to_vec()),
         function_call: Some("auto".to_string()),
         temperature: None,
         top_p: None,

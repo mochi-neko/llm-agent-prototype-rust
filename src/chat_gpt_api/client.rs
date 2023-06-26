@@ -1,4 +1,4 @@
-use crate::chat_gpt::specification::{RequestBody, ResponseBody};
+use crate::chat_gpt_api::specification::{RequestBody, ResponseBody};
 use anyhow::Result;
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;

@@ -1,5 +1,7 @@
+mod api_state;
 mod chat;
-mod chat_gpt;
+mod chat_gpt_api;
+mod vector_db;
 
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -7,21 +9,23 @@ use std::sync::Arc;
 use crate::chat::memory::FiniteQueueMemory;
 use crate::chat::router::{chat_handler, chat_stream_handler, function_handler};
 
+use crate::api_state::ApiState;
 use anyhow::Result;
 use axum::{routing::post, Router};
-use chat_gpt::specification::{Function, Model};
+use chat_gpt_api::specification::{Function, Model};
 use tokio::sync::Mutex;
-use tower_http::add_extension::AddExtensionLayer;
+use vector_db::vector_memories::VectorMemories;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // create our state
-    let model = Arc::new(Model::Gpt35Turbo0613);
-    let memory_state = Arc::new(Mutex::new(FiniteQueueMemory {
+    let model = Model::Gpt35Turbo0613;
+    let context_memory = FiniteQueueMemory {
         memories: VecDeque::new(),
         max_size: 10,
-    }));
-    let functions = Arc::new(vec![Function {
+    };
+    let vector_memories = VectorMemories::new().await?;
+    let functions = vec![Function {
         name: "emotion_simulator".to_string(),
         description: Some("Simulate emotion of AI like human.".to_string()),
         parameters: Some(
@@ -49,16 +53,20 @@ async fn main() -> Result<()> {
             )
             .unwrap(),
         ),
-    }]);
+    }];
+    let api_state = Arc::new(Mutex::new(ApiState {
+        model,
+        context_memory,
+        vector_memories,
+        functions,
+    }));
 
     // build our application
     let app = Router::new()
         .route("/chat", post(chat_handler))
         .route("/chat_stream", post(chat_stream_handler))
         .route("/function", post(function_handler))
-        .layer(AddExtensionLayer::new(model))
-        .layer(AddExtensionLayer::new(memory_state))
-        .layer(AddExtensionLayer::new(functions));
+        .with_state(api_state);
 
     // run it with hyper on localhost:8000
     axum::Server::bind(&"0.0.0.0:8000".parse()?)
