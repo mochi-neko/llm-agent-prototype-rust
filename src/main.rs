@@ -20,6 +20,7 @@ use vector_db::vector_memories::VectorMemories;
 async fn main() -> Result<()> {
     // create our state
     let model = Model::Gpt35Turbo0613;
+    let prompt = "Your are an AI assistant.".to_string();
     let context_memory = FiniteQueueMemory {
         memories: VecDeque::new(),
         max_size: 10,
@@ -56,6 +57,7 @@ async fn main() -> Result<()> {
     }];
     let api_state = Arc::new(Mutex::new(ApiState {
         model,
+        prompt,
         context_memory,
         vector_memories,
         functions,

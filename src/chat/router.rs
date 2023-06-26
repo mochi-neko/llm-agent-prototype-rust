@@ -1,3 +1,5 @@
+use anyhow::Result;
+use qdrant_client::qdrant::{vectors::VectorsOptions, ScoredPoint};
 use std::sync::Arc;
 
 use axum::{
@@ -16,7 +18,10 @@ use crate::{
         client::{complete_chat, complete_chat_stream},
         specification::{Message, RequestBody, Role},
     },
-    vector_db::database::MetaData,
+    vector_db::{
+        database::{DataBase, MetaData},
+        tokenizer::detokenize,
+    },
 };
 
 use super::memory::Memory;
@@ -47,6 +52,11 @@ pub(crate) async fn chat_handler(
 ) -> response::Json<ChatResponse> {
     let mut api_state = api_state.lock().await;
 
+    let session_retrival =
+        retrive_vector_memory(&api_state.vector_memories.session, request.message.as_str())
+            .await
+            .unwrap();
+
     api_state.context_memory.add(Message {
         role: Role::User.parse_to_string().unwrap(),
         content: Some(request.message.to_string()),
@@ -66,10 +76,12 @@ pub(crate) async fn chat_handler(
         )
         .await
         .unwrap();
+    let context = api_state.context_memory.get();
+    let messages = build_messages(api_state.prompt.clone(), session_retrival, context.clone());
 
     let parameters: RequestBody = RequestBody {
         model: api_state.model.parse_to_string().unwrap(),
-        messages: api_state.context_memory.get(),
+        messages,
         functions: None,
         function_call: None,
         temperature: None,
@@ -272,4 +284,62 @@ pub(crate) async fn function_handler(
             },
         },
     }
+}
+
+async fn retrive_vector_memory<'a>(database: &DataBase<'a>, query: &str) -> Result<String> {
+    let result = database.search(query, 5, None).await?;
+    let mut combined = String::new();
+    for scored_point in result {
+        let vector = extract_vector(&scored_point)?;
+        let text = detokenize(vector)?;
+
+        let payload = scored_point.payload;
+        let author = payload.get("author").unwrap().to_string();
+        let addressee = payload.get("addressee").unwrap().to_string();
+
+        combined.push_str(
+            format!(
+                "Score = {}, {} -> {}: {}\n",
+                scored_point.score, author, addressee, text
+            )
+            .as_str(),
+        );
+    }
+
+    Ok(combined)
+}
+
+fn extract_vector(point: &ScoredPoint) -> Result<Vec<f32>> {
+    if let Some(vectors) = point.vectors.clone() {
+        match vectors.vectors_options {
+            Some(VectorsOptions::Vector(vector)) => Ok(vector.data),
+            _ => Err(anyhow::anyhow!("No vector in result"))?,
+        }
+    } else {
+        Err(anyhow::anyhow!("No vector in result"))?
+    }
+}
+
+fn build_messages(prompt: String, memory: String, context: Vec<Message>) -> Vec<Message> {
+    let mut messages = Vec::new();
+
+    messages.push(Message {
+        role: Role::System.parse_to_string().unwrap(),
+        content: Some(prompt),
+        name: None,
+        function_call: None,
+    });
+
+    messages.push(Message {
+        role: Role::System.parse_to_string().unwrap(),
+        content: Some(memory),
+        name: None,
+        function_call: None,
+    });
+
+    for message in context {
+        messages.push(message);
+    }
+
+    messages
 }

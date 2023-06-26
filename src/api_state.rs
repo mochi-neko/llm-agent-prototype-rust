@@ -6,6 +6,7 @@ use crate::{
 
 pub(crate) struct ApiState<'a> {
     pub(crate) model: Model,
+    pub(crate) prompt: String,
     pub(crate) context_memory: FiniteQueueMemory,
     pub(crate) vector_memories: VectorMemories<'a>,
     pub(crate) functions: Vec<Function>,

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use chrono::{DateTime, Utc};
 use qdrant_client::{
     prelude::{Payload, QdrantClient},
     qdrant::{
-        vectors_config::Config, Condition, CreateCollection, Distance, Filter, PointStruct,
+        vectors_config::Config, CreateCollection, Distance, Filter, PointStruct, ScoredPoint,
         SearchPoints, Value, VectorParams, VectorsConfig,
     },
 };
@@ -72,19 +72,26 @@ impl DataBase<'_> {
         Ok(())
     }
 
-    // TODO: Implement filter
-    async fn search(&self) -> Result<()> {
-        self.client
+    pub(crate) async fn search(
+        &self,
+        query: &str,
+        count_limit: u64,
+        filter: Option<Filter>,
+    ) -> Result<Vec<ScoredPoint>> {
+        let embedding = tokenize(query)?;
+        let result = self
+            .client
             .search_points(&SearchPoints {
                 collection_name: self.name.to_string(),
-                vector: vec![11.; 10],
-                filter: Some(Filter::all([Condition::matches("bar", 12)])),
-                limit: 10,
+                vector: embedding,
+                limit: count_limit,
+                filter,
                 with_payload: Some(true.into()),
+                with_vectors: Some(true.into()),
                 ..Default::default()
             })
             .await?;
 
-        Ok(())
+        Ok(result.result)
     }
 }
