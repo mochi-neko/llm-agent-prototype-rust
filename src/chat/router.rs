@@ -7,7 +7,7 @@ use axum::{
     response::{self, Response},
 };
 use chrono::Utc;
-use hyper::Body;
+use hyper::{Body, StatusCode};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -45,7 +45,7 @@ pub(crate) struct FunctionResponse {
     pub(crate) arguments: Option<String>,
 }
 
-/// curl http://localhost:8000/chat -X POST -H "Content-Type: application/json" -d '{"message":"Hello!"}'
+/// curl http://localhost:8000/chat -X POST -H "Content-Type: application/json" -d '{"message":"Hello!", "author":"mochineko"}'
 pub(crate) async fn chat_handler(
     api_state: State<Arc<Mutex<ApiState<'_>>>>,
     request: extract::Json<ChatRequest>,
@@ -63,6 +63,7 @@ pub(crate) async fn chat_handler(
         name: None,
         function_call: None,
     });
+
     api_state
         .vector_memories
         .session
@@ -76,6 +77,7 @@ pub(crate) async fn chat_handler(
         )
         .await
         .unwrap();
+
     let context = api_state.context_memory.get();
     let messages = build_messages(api_state.prompt.clone(), session_retrival, context.clone());
 
@@ -138,7 +140,7 @@ pub(crate) async fn chat_handler(
     }
 }
 
-/// curl http://localhost:8000/chat_stream -X POST -H "Content-Type: application/json" -d '{"message":"Hello!"}'
+/// curl http://localhost:8000/chat_stream -X POST -H "Content-Type: application/json" -d '{"message":"Hello!", "author":"mochineko"}'
 pub(crate) async fn chat_stream_handler(
     api_state: State<Arc<Mutex<ApiState<'static>>>>,
     request: extract::Json<ChatRequest>,
