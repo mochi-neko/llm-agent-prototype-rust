@@ -1,0 +1,19 @@
+syntax = "proto3";
+package chat;
+
+service Chat {
+    rpc CompleteChat (ChatRequest) returns (ChatResponse);
+    rpc CompleteChatStreaming (ChatRequest) returns (stream ChatStreamingResponse);
+}
+
+message ChatRequest {
+   string message = 1;
+}
+
+message ChatResponse {
+    string message = 1;
+}
+
+message ChatStreamingResponse {
+    string delta = 1;
+}
