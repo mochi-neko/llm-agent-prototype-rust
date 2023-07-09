@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::chat_gpt_api::specification::Message;
+use specification::Message;
 
 pub(crate) trait Memory: Send + Clone {
     fn get(&self) -> Vec<Message>;
