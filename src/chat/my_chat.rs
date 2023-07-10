@@ -15,7 +15,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::{wrappers::UnboundedReceiverStream, Stream};
-use tonic::{Request, Response, Status};
+use tonic::{Code, Request, Response, Status};
 
 pub struct MyChat {
     pub(crate) state: Arc<Mutex<ApiState>>,
@@ -64,8 +64,10 @@ impl Chat for MyChat {
         };
 
         match complete_chat(options, true).await {
-            // TODO: Handle errors for each status code
-            Err(e) => Err(Status::new(tonic::Code::Unknown, e.to_string())),
+            Err(error) => {
+                let error = anyhow::anyhow!("Error in complete_chat: {:?}", error);
+                Err(map_anyhow_error_to_grpc_status(error))
+            }
             Ok(response) => match response.choices.get(0) {
                 None => Err(Status::new(
                     tonic::Code::Internal,
@@ -76,6 +78,7 @@ impl Chat for MyChat {
                         tonic::Code::Internal,
                         "No content in response".to_string(),
                     )),
+                    // Success
                     Some(content) => {
                         state.context_memory.add(Message {
                             role: Role::Assistant.parse_to_string().unwrap(),
@@ -148,7 +151,7 @@ impl Chat for MyChat {
                 user: None,
             };
 
-            if let Ok(total_message) = complete_chat_stream(tx, options, true).await {
+            if let Ok(total_message) = complete_chat_stream(tx.clone(), options, true).await {
                 state.context_memory.add(Message {
                     role: Role::Assistant.parse_to_string().unwrap(),
                     content: Some(total_message),
@@ -164,9 +167,8 @@ impl Chat for MyChat {
         let rx = UnboundedReceiverStream::new(rx);
 
         let output_stream = rx.map(|result| {
-            if let Err(e) = result {
-                // TODO: Handle errors for each status code
-                Err(Status::new(tonic::Code::Internal, e.to_string()))
+            if let Err(error) = result {
+                Err(map_anyhow_error_to_grpc_status(error))
             } else {
                 Ok(chat_rpc::ChatStreamingResponse {
                     delta: result.unwrap(),
@@ -195,4 +197,33 @@ fn build_messages(prompt: String, context: Vec<Message>) -> Vec<Message> {
     }
 
     messages
+}
+
+fn map_anyhow_error_to_grpc_status(error: anyhow::Error) -> Status {
+    if let Some(hyper_error) = error.downcast_ref::<hyper::Error>() {
+        if hyper_error.is_parse() {
+            return Status::new(Code::Internal, "parse error");
+        } else if hyper_error.is_parse_too_large() {
+            return Status::new(Code::Internal, "parse too large");
+        } else if hyper_error.is_parse_status() {
+            return Status::new(Code::Internal, "parse status");
+        } else if hyper_error.is_user() {
+            return Status::new(Code::Internal, "user error");
+        } else if hyper_error.is_canceled() {
+            return Status::new(Code::Cancelled, "canceled");
+        } else if hyper_error.is_closed() {
+            return Status::new(Code::Unavailable, "connection closed");
+        } else if hyper_error.is_connect() {
+            return Status::new(Code::Unavailable, "connection error");
+        } else if hyper_error.is_incomplete_message() {
+            return Status::new(Code::Internal, "incomplete message");
+        } else if hyper_error.is_body_write_aborted() {
+            return Status::new(Code::Aborted, "body write aborted");
+        } else if hyper_error.is_timeout() {
+            return Status::new(Code::DeadlineExceeded, "timeout");
+        }
+    }
+
+    // If the error is not hyper::Error, use the error message directly.
+    Status::new(Code::Internal, format!("Internal error: {:?}", error))
 }

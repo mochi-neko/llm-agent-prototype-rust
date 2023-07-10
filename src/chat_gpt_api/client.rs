@@ -9,12 +9,12 @@ use tokio_stream::StreamExt;
 use super::specification::CompletionStreamingChunk;
 
 pub(crate) async fn complete_chat(options: Options, verbose: bool) -> Result<CompletionResult> {
-    if options.stream.is_some() && options.stream.unwrap() {
-        eprintln!("This function is not available for stream mode");
-
-        return Err(anyhow::anyhow!(
-            "This function is not available for stream mode"
+    if options.stream == Some(true) {
+        let error = Err(anyhow::anyhow!(
+            "This function is only available for stream mode"
         ));
+        eprintln!("{:?}", error);
+        return error;
     }
 
     let api_key = env::var("OPENAI_API_KEY")?;
@@ -45,7 +45,8 @@ pub(crate) async fn complete_chat(options: Options, verbose: bool) -> Result<Com
     let response = client.request(request).await?;
 
     // If the request is successful
-    if response.status().is_success() {
+    let status = response.status();
+    if status.is_success() {
         // Read the response body
         let body_bytes = hyper::body::to_bytes(response.into_body()).await?;
 
@@ -61,9 +62,16 @@ pub(crate) async fn complete_chat(options: Options, verbose: bool) -> Result<Com
 
         Ok(body_object)
     } else {
-        eprintln!("HTTP request failed: {}", response.status());
+        let body_bytes = hyper::body::to_bytes(response.into_body()).await?;
+        let body_string = String::from_utf8(body_bytes.to_vec())?;
+        let error = anyhow::anyhow!(
+            "HTTP request failed: {}\nResponse body: {}",
+            status,
+            body_string
+        );
 
-        Err(anyhow::anyhow!("HTTP request failed"))
+        eprintln!("{:?}", error);
+        Err(error)
     }
 }
 
@@ -72,12 +80,15 @@ pub(crate) async fn complete_chat_stream(
     options: Options,
     verbose: bool,
 ) -> Result<String> {
-    if options.stream.is_none() || !options.stream.unwrap() {
-        eprintln!("This function is only available for stream mode");
-
-        return Err(anyhow::anyhow!(
-            "This function is not available for stream mode"
+    if options.stream == Some(true) {
+        let error = Err(anyhow::anyhow!(
+            "This function is only available for stream mode"
         ));
+        eprintln!("{:?}", error);
+        tx.send(Err(anyhow::anyhow!(
+            "This function is only available for stream mode"
+        )))?;
+        return error;
     }
 
     let api_key = env::var("OPENAI_API_KEY")?;
@@ -105,51 +116,74 @@ pub(crate) async fn complete_chat_stream(
         .body(Body::from(json_str))?;
 
     // Make the request
-    let response = client.request(request).await?;
+    match client.request(request).await {
+        Err(error) => {
+            eprintln!("Failed to make request: {:?}", error);
+            tx.send(Err(anyhow::Error::new(error)));
+            Err(anyhow::anyhow!("Failed to make request"))
+        }
+        Ok(response) => {
+            // If the request is successful
+            let status = response.status();
+            if status.is_success() {
+                let mut body = hyper::body::Body::wrap_stream(response.into_body());
+                let mut total_message = "".to_string();
 
-    // If the request is successful
-    if response.status().is_success() {
-        let mut body = hyper::body::Body::wrap_stream(response.into_body());
-        let mut total_message = "".to_string();
+                while let Some(chunk) = body.next().await {
+                    let chunk = chunk?;
+                    let chunk_string = String::from_utf8(chunk.to_vec())?;
 
-        while let Some(chunk) = body.next().await {
-            let chunk = chunk?;
-            let chunk_string = String::from_utf8(chunk.to_vec())?;
+                    if verbose {
+                        println!("Response chunk:\n{}", chunk_string);
+                    }
 
-            if verbose {
-                println!("Response chunk:\n{}", chunk_string);
-            }
-
-            // Split the chunk by newline characters and process each line
-            for line in chunk_string.split('\n') {
-                if line.is_empty() {
-                    continue;
-                }
-                let result = process_chunk(tx.clone(), line.to_string(), verbose).await;
-                match result {
-                    Ok(result) => {
-                        total_message.push_str(&result);
-                        if verbose {
-                            println!("Current total message:\n{}", total_message);
+                    // Split the chunk by newline characters and process each line
+                    for line in chunk_string.split('\n') {
+                        if line.is_empty() {
+                            continue;
+                        }
+                        let result = process_chunk(tx.clone(), line.to_string(), verbose).await;
+                        match result {
+                            Ok(result) => {
+                                total_message.push_str(&result);
+                                if verbose {
+                                    println!("Current total message:\n{}", total_message);
+                                }
+                            }
+                            Err(error) => {
+                                eprintln!("Failed to process chunk: {:?}", error);
+                                return Err(anyhow::anyhow!("Failed to process chunk"));
+                            }
                         }
                     }
-                    Err(e) => {
-                        eprintln!("Failed to process chunk: {}", e);
-                        return Err(anyhow::anyhow!("Failed to process chunk"));
-                    }
                 }
+
+                if verbose {
+                    println!("Result total message:\n{}", total_message);
+                }
+
+                // Finish streaming
+                Ok(total_message)
+            } else {
+                let body_bytes = hyper::body::to_bytes(response.into_body()).await?;
+                let body_string = String::from_utf8(body_bytes.to_vec())?;
+                let error = anyhow::anyhow!(
+                    "HTTP request failed: {}\nResponse body: {}",
+                    status.clone(),
+                    body_string.clone()
+                );
+
+                eprintln!("{:?}", error);
+                tx.send(Err(error));
+
+                let error = anyhow::anyhow!(
+                    "HTTP request failed: {}\nResponse body: {}",
+                    status.clone(),
+                    body_string.clone()
+                );
+                Err(error)
             }
         }
-
-        if verbose {
-            println!("Result total message:\n{}", total_message);
-        }
-
-        Ok(total_message)
-    } else {
-        eprintln!("HTTP request failed: {}", response.status());
-
-        Err(anyhow::anyhow!("HTTP request failed"))
     }
 }
 
@@ -172,6 +206,7 @@ async fn process_chunk(
     match serde_json::from_str::<CompletionStreamingChunk>(&data) {
         Err(e) => {
             eprintln!("Failed to parse JSON: {}", e);
+            tx.send(Err(anyhow::Error::new(e)));
             return Err(anyhow::anyhow!("Failed to parse JSON"));
         }
         Ok(chunk_object) => match chunk_object.choices.get(0) {
@@ -195,13 +230,13 @@ async fn process_chunk(
                 match chunk_choice.delta.content.clone() {
                     None => {
                         if let Err(e) = tx.send(Err(anyhow::anyhow!("No content"))) {
-                            eprintln!("Failed to send error: {}", e);
+                            eprintln!("Failed to send error: {:?}", e);
                         }
                         return Err(anyhow::anyhow!("No content"));
                     }
                     Some(content) => {
                         if let Err(e) = tx.send(Ok(content.clone())) {
-                            eprintln!("Failed to send message: {}", e);
+                            eprintln!("Failed to send message: {:?}", e);
                             return Err(anyhow::anyhow!("Failed to send message"));
                         } else {
                             // Succeeded to send message
