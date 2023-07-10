@@ -119,7 +119,7 @@ pub(crate) async fn complete_chat_stream(
     match client.request(request).await {
         Err(error) => {
             eprintln!("Failed to make request: {:?}", error);
-            tx.send(Err(anyhow::Error::new(error)));
+            tx.send(Err(anyhow::Error::new(error)))?;
             Err(anyhow::anyhow!("Failed to make request"))
         }
         Ok(response) => {
@@ -170,16 +170,16 @@ pub(crate) async fn complete_chat_stream(
                 let error = anyhow::anyhow!(
                     "HTTP request failed: {}\nResponse body: {}",
                     status.clone(),
-                    body_string.clone()
+                    body_string
                 );
 
                 eprintln!("{:?}", error);
-                tx.send(Err(error));
+                tx.send(Err(error))?;
 
                 let error = anyhow::anyhow!(
                     "HTTP request failed: {}\nResponse body: {}",
                     status.clone(),
-                    body_string.clone()
+                    body_string
                 );
                 Err(error)
             }
@@ -206,7 +206,7 @@ async fn process_chunk(
     match serde_json::from_str::<CompletionStreamingChunk>(&data) {
         Err(e) => {
             eprintln!("Failed to parse JSON: {}", e);
-            tx.send(Err(anyhow::Error::new(e)));
+            tx.send(Err(anyhow::Error::new(e)))?;
             return Err(anyhow::anyhow!("Failed to parse JSON"));
         }
         Ok(chunk_object) => match chunk_object.choices.get(0) {
