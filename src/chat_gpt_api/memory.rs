@@ -1,6 +1,5 @@
+use crate::chat_gpt_api::specification::Message;
 use std::collections::VecDeque;
-
-use specification::Message;
 
 pub(crate) trait Memory: Send + Clone {
     fn get(&self) -> Vec<Message>;
@@ -11,6 +10,15 @@ pub(crate) trait Memory: Send + Clone {
 pub(crate) struct FiniteQueueMemory {
     pub(crate) memories: VecDeque<Message>,
     pub(crate) max_size: usize,
+}
+
+impl FiniteQueueMemory {
+    pub(crate) fn new(max_size: usize) -> Self {
+        Self {
+            memories: VecDeque::new(),
+            max_size,
+        }
+    }
 }
 
 impl Memory for FiniteQueueMemory {

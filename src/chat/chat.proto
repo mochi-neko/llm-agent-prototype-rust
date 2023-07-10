@@ -7,11 +7,11 @@ service Chat {
 }
 
 message ChatRequest {
-   string message = 1;
+    string message = 1;
 }
 
 message ChatResponse {
-    string message = 1;
+    string response = 1;
 }
 
 message ChatStreamingResponse {

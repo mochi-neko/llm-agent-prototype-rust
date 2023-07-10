@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(true)
         .file_descriptor_set_path(out_dir.join("chat_descriptor.bin"))
         .out_dir(out_dir)
-        .compile(&["src/proto/chat.proto"], &["proto"])
+        .compile(&["src/chat/chat.proto"], &["proto"])
         .unwrap_or_else(|e| panic!("protobuf compile error: {}", e));
     Ok(())
 }

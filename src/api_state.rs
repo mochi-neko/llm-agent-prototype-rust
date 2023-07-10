@@ -1,13 +1,11 @@
 use crate::{
-    chat::memory::FiniteQueueMemory,
+    chat_gpt_api::memory::FiniteQueueMemory,
     chat_gpt_api::specification::{Function, Model},
-    vector_db::vector_memories::VectorMemories,
 };
 
-pub(crate) struct ApiState<'a> {
+pub(crate) struct ApiState {
     pub(crate) model: Model,
     pub(crate) prompt: String,
     pub(crate) context_memory: FiniteQueueMemory,
-    pub(crate) vector_memories: VectorMemories<'a>,
     pub(crate) functions: Vec<Function>,
 }
