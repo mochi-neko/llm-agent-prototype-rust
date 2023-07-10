@@ -5,15 +5,14 @@ pub(crate) mod chat_rpc {
         tonic::include_file_descriptor_set!("chat_descriptor");
 }
 
-use std::pin::Pin;
-use std::sync::Arc;
-
 use crate::api_state::ApiState;
 use crate::chat_gpt_api::client::{complete_chat, complete_chat_stream};
 use crate::chat_gpt_api::memory::Memory;
 use crate::chat_gpt_api::specification::{Message, Options, Role};
 use chat_rpc::chat_server::Chat;
 use futures_util::stream::StreamExt;
+use std::pin::Pin;
+use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::{wrappers::UnboundedReceiverStream, Stream};
 use tonic::{Request, Response, Status};

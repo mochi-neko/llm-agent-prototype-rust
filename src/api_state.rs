@@ -1,7 +1,5 @@
-use crate::{
-    chat_gpt_api::memory::FiniteQueueMemory,
-    chat_gpt_api::specification::{Function, Model},
-};
+use crate::chat_gpt_api::memory::FiniteQueueMemory;
+use crate::chat_gpt_api::specification::{Function, Model};
 
 pub(crate) struct ApiState {
     pub(crate) model: Model,

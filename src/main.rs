@@ -4,11 +4,11 @@ mod chat_gpt_api;
 
 use std::sync::Arc;
 
+use crate::api_state::ApiState;
+use crate::chat::my_chat::chat_rpc::chat_server::ChatServer;
+use crate::chat::my_chat::MyChat;
 use crate::chat_gpt_api::memory::FiniteQueueMemory;
-use api_state::ApiState;
-use chat::my_chat::chat_rpc::chat_server::ChatServer;
-use chat::my_chat::MyChat;
-use chat_gpt_api::specification::{Function, Model};
+use crate::chat_gpt_api::specification::{Function, Model};
 use tokio::sync::Mutex;
 use tonic::transport::Server;
 
