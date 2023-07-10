@@ -9,14 +9,13 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::api_state::ApiState;
-use crate::chat_gpt_api::client::complete_chat;
+use crate::chat_gpt_api::client::{complete_chat, complete_chat_stream};
 use crate::chat_gpt_api::memory::Memory;
 use crate::chat_gpt_api::specification::{Message, RequestBody, Role};
-use async_stream::stream;
 use chat_rpc::chat_server::Chat;
-use tokio::sync::Mutex;
-use tokio::time::Duration;
-use tokio_stream::Stream;
+use futures_util::stream::StreamExt;
+use tokio::sync::{mpsc, Mutex};
+use tokio_stream::{wrappers::UnboundedReceiverStream, Stream};
 use tonic::{Request, Response, Status};
 
 pub struct MyChat {
@@ -109,33 +108,72 @@ impl Chat for MyChat {
         >,
     >;
 
-    // TODO:
     // grpcurl -plaintext localhost:8000 chat.Chat/CompleteChatStreaming {\n "message": "Hello!" \n}
     async fn complete_chat_streaming(
         &self,
         request: Request<chat_rpc::ChatRequest>,
     ) -> Result<Response<Self::CompleteChatStreamingStream>, Status> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let state = Arc::clone(&self.state);
+
         let address = request.remote_addr();
         println!(
             "Got a request to complete chat streaming: {:?} from {:?}",
             request, address
         );
 
-        let message = request.into_inner().message;
+        tokio::spawn(async move {
+            let mut state = state.lock().await;
 
-        let output_stream = stream! {
-            for i in 0u32..=5 {
-                tokio::time::sleep(Duration::from_secs(1)).await;
+            state.context_memory.add(Message {
+                role: Role::User.parse_to_string().unwrap(),
+                content: Some(request.into_inner().message),
+                name: None,
+                function_call: None,
+            });
 
-                let response = chat_rpc::ChatStreamingResponse {
-                    delta: format!("Hello {}! Count: {}", message, i),
-                };
+            let parameters = RequestBody {
+                model: state.model.parse_to_string().unwrap(),
+                messages: state.context_memory.get(),
+                functions: None,
+                function_call: None,
+                temperature: None,
+                top_p: None,
+                n: None,
+                stream: Some(true),
+                stop: None,
+                max_tokens: None,
+                presence_penalty: None,
+                frequency_penalty: None,
+                logit_bias: None,
+                user: None,
+            };
 
-                yield Ok(response);
+            if let Ok(total_message) = complete_chat_stream(tx, parameters, true).await {
+                state.context_memory.add(Message {
+                    role: Role::Assistant.parse_to_string().unwrap(),
+                    content: Some(total_message.clone()),
+                    name: None,
+                    function_call: None,
+                });
             }
-        };
+        });
 
         println!("Responding to complete chat streaming to {:?}.", address);
+
+        // Wrap the receiver in a UnboundedReceiverStream
+        let rx = UnboundedReceiverStream::new(rx);
+
+        let output_stream = rx.map(|result| {
+            if let Err(e) = result {
+                // TODO: Handle errors for each status code
+                Err(Status::new(tonic::Code::Internal, e.to_string()))
+            } else {
+                Ok(chat_rpc::ChatStreamingResponse {
+                    delta: result.unwrap(),
+                })
+            }
+        });
 
         Ok(Response::new(
             Box::pin(output_stream) as Self::CompleteChatStreamingStream
