@@ -1,4 +1,4 @@
-use crate::chat_gpt_api::specification::{RequestBody, ResponseBody};
+use crate::chat_gpt_api::specification::{CompletionResult, Options};
 use anyhow::Result;
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
@@ -6,10 +6,10 @@ use std::env;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 
-use super::specification::ResponseChunk;
+use super::specification::CompletionStreamingChunk;
 
-pub(crate) async fn complete_chat(parameters: RequestBody, verbose: bool) -> Result<ResponseBody> {
-    if parameters.stream.is_some() && parameters.stream.unwrap() {
+pub(crate) async fn complete_chat(options: Options, verbose: bool) -> Result<CompletionResult> {
+    if options.stream.is_some() && options.stream.unwrap() {
         eprintln!("This function is not available for stream mode");
 
         return Err(anyhow::anyhow!(
@@ -26,7 +26,7 @@ pub(crate) async fn complete_chat(parameters: RequestBody, verbose: bool) -> Res
     let client = Client::builder().build::<_, Body>(https);
 
     // Serialize the payload to a string
-    let json_str = serde_json::to_string(&parameters)?;
+    let json_str = serde_json::to_string(&options)?;
 
     if verbose {
         println!("Request JSON\n{}", json_str);
@@ -57,7 +57,7 @@ pub(crate) async fn complete_chat(parameters: RequestBody, verbose: bool) -> Res
         }
 
         // Deserialize the string to a struct
-        let body_object = serde_json::from_str::<ResponseBody>(&body_string)?;
+        let body_object = serde_json::from_str::<CompletionResult>(&body_string)?;
 
         Ok(body_object)
     } else {
@@ -69,10 +69,10 @@ pub(crate) async fn complete_chat(parameters: RequestBody, verbose: bool) -> Res
 
 pub(crate) async fn complete_chat_stream(
     tx: mpsc::UnboundedSender<Result<String>>,
-    parameters: RequestBody,
+    options: Options,
     verbose: bool,
 ) -> Result<String> {
-    if parameters.stream.is_none() || !parameters.stream.unwrap() {
+    if options.stream.is_none() || !options.stream.unwrap() {
         eprintln!("This function is only available for stream mode");
 
         return Err(anyhow::anyhow!(
@@ -89,7 +89,7 @@ pub(crate) async fn complete_chat_stream(
     let client = Client::builder().build::<_, Body>(https);
 
     // Serialize the payload to a string
-    let json_str = serde_json::to_string(&parameters)?;
+    let json_str = serde_json::to_string(&options)?;
 
     if verbose {
         println!("Request JSON\n{}", json_str);
@@ -169,7 +169,7 @@ async fn process_chunk(
     let data = line.trim_start_matches("data: ").to_string();
 
     // Deserialize the string to a struct
-    match serde_json::from_str::<ResponseChunk>(&data) {
+    match serde_json::from_str::<CompletionStreamingChunk>(&data) {
         Err(e) => {
             eprintln!("Failed to parse JSON: {}", e);
             return Err(anyhow::anyhow!("Failed to parse JSON"));

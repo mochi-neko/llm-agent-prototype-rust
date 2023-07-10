@@ -74,7 +74,7 @@ impl Role {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct RequestBody {
+pub(crate) struct Options {
     pub(crate) model: String,
     pub(crate) messages: Vec<Message>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -150,7 +150,7 @@ impl Clone for Message {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ResponseBody {
+pub(crate) struct CompletionResult {
     pub(crate) id: String,
     pub(crate) object: String,
     pub(crate) created: u64,
@@ -189,7 +189,7 @@ pub(crate) struct Usage {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ResponseChunk {
+pub(crate) struct CompletionStreamingChunk {
     pub(crate) id: String,
     pub(crate) object: String,
     pub(crate) created: u64,

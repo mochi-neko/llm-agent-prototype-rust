@@ -11,7 +11,7 @@ use std::sync::Arc;
 use crate::api_state::ApiState;
 use crate::chat_gpt_api::client::{complete_chat, complete_chat_stream};
 use crate::chat_gpt_api::memory::Memory;
-use crate::chat_gpt_api::specification::{Message, RequestBody, Role};
+use crate::chat_gpt_api::specification::{Message, Options, Role};
 use chat_rpc::chat_server::Chat;
 use futures_util::stream::StreamExt;
 use tokio::sync::{mpsc, Mutex};
@@ -47,7 +47,7 @@ impl Chat for MyChat {
         let context = state.context_memory.get();
         let messages = build_messages(state.prompt.clone(), context.clone());
 
-        let parameters: RequestBody = RequestBody {
+        let options: Options = Options {
             model: state.model.parse_to_string().unwrap(),
             messages,
             functions: None,
@@ -64,7 +64,7 @@ impl Chat for MyChat {
             user: None,
         };
 
-        match complete_chat(parameters, true).await {
+        match complete_chat(options, true).await {
             // TODO: Handle errors for each status code
             Err(e) => Err(Status::new(tonic::Code::Unknown, e.to_string())),
             Ok(response) => match response.choices.get(0) {
@@ -108,7 +108,7 @@ impl Chat for MyChat {
         >,
     >;
 
-    // grpcurl -plaintext localhost:8000 chat.Chat/CompleteChatStreaming {\n "message": "Hello!" \n}
+    // grpcurl -plaintext -d '{ "message": "Hello!" }' localhost:8000 chat.Chat/CompleteChatStreaming
     async fn complete_chat_streaming(
         &self,
         request: Request<chat_rpc::ChatRequest>,
@@ -132,7 +132,7 @@ impl Chat for MyChat {
                 function_call: None,
             });
 
-            let parameters = RequestBody {
+            let options = Options {
                 model: state.model.parse_to_string().unwrap(),
                 messages: state.context_memory.get(),
                 functions: None,
@@ -149,10 +149,10 @@ impl Chat for MyChat {
                 user: None,
             };
 
-            if let Ok(total_message) = complete_chat_stream(tx, parameters, true).await {
+            if let Ok(total_message) = complete_chat_stream(tx, options, true).await {
                 state.context_memory.add(Message {
                     role: Role::Assistant.parse_to_string().unwrap(),
-                    content: Some(total_message.clone()),
+                    content: Some(total_message),
                     name: None,
                     function_call: None,
                 });
