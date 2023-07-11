@@ -79,7 +79,7 @@ pub(crate) struct Options {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) functions: Option<Vec<Function>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) function_call: Option<String>,
+    pub(crate) function_call: Option<FunctionCallingSpecification>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) temperature: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -107,8 +107,7 @@ pub(crate) struct Function {
     pub(crate) name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) parameters: Option<serde_json::Map<String, serde_json::Value>>,
+    pub(crate) parameters: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Clone for Function {
@@ -121,9 +120,26 @@ impl Clone for Function {
     }
 }
 
+impl Function {
+    pub(crate) fn new(
+        name: String,
+        description: Option<String>,
+        parameters_schema: String,
+    ) -> Function {
+        Function {
+            name,
+            description,
+            parameters: serde_json::from_str(&parameters_schema).unwrap(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ParticularFunction {
-    pub(crate) name: String,
+#[serde(rename_all = "camelCase")]
+pub(crate) enum FunctionCallingSpecification {
+    Auto,
+    None,
+    Name(String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
