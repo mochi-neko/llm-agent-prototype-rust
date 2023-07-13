@@ -1,4 +1,5 @@
 mod api_state;
+mod certification;
 mod chat;
 mod chat_gpt_api;
 mod error_conversion;
@@ -7,6 +8,7 @@ mod speak;
 use std::sync::Arc;
 
 use crate::api_state::ApiState;
+use crate::certification::build_tls_config;
 use crate::chat::my_chat::chat_rpc::chat_server::ChatServer;
 use crate::chat::my_chat::MyChat;
 use crate::chat_gpt_api::memory::FiniteQueueMemory;
@@ -42,6 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     Server::builder()
+        .tls_config(build_tls_config()?)?
         .add_service(ChatServer::new(chat))
         .add_service(SpeakServer::new(speak))
         .add_service(reflection_server)

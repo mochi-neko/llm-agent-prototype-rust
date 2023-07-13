@@ -13,3 +13,5 @@ Cargo.lock
 docker-compose.override.yml
 .DS_Store
 .db/
+*/certificates/
+*.pen
